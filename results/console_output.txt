@@ -1,0 +1,63 @@
+################ step1_check_data
+2D points shape: (298, 2)
+3D points shape: (298, 3)
+duplicate rows: 0
+u range: 15.445 to 735.251
+v range: 78.036 to 543.688
+X range: -2.989 to 2.723
+Y range: -1.358 to 1.941
+Z range: -6.358 to -3.599
+singular values of the centred 3D points: [20.703  9.195  5.548]
+smallest / largest = 0.268 (not near 0, so the points are not coplanar)
+need at least 6 correspondences, have 298
+################ step2_projection_matrix
+number of correspondences: 298
+design matrix shape: (596, 12)
+three smallest singular values of A (normalized coordinates): [7.840504 7.182754 0.068043]
+projection matrix P:
+[[ 666.738586   14.909862 -398.525915  -62.4717  ]
+ [  -0.256527 -663.940138 -288.672851    0.092784]
+ [  -0.000134    0.033682   -0.999433    0.020061]]
+norm of P[2,:3] = 0.9999999999999999
+################ step3_decompose_camera
+calibration matrix K:
+ [[666.79142   -1.69707  398.712771]
+ [  0.       673.286513 266.146311]
+ [  0.         0.         1.      ]]
+rotation matrix R:
+ [[ 1.       -0.000323 -0.000145]
+ [-0.000328 -0.999433 -0.033682]
+ [-0.000134  0.033682 -0.999433]]
+translation vector t: [-0.105705 -0.007792  0.020061]
+camera centre C = -R^T t: [ 0.105706 -0.008498  0.019772]
+################ step4_check_decomposition
+K is upper triangular: True
+K[2,2] = 1.0
+det(R) = 1.0000000000000004
+orthogonality error |R^T R - I| = 9.160323429177208e-16
+scale between P and K[R|t]: s = 0.9999999999999998
+reconstruction error |P - s K[R|t]| = 1.6222334578490111e-13
+camera centre from P (-M^-1 p4): [ 0.105706 -0.008498  0.019772]
+camera centre from R and t (-R^T t): [ 0.105706 -0.008498  0.019772]
+rotation angle of R: 178.07 degrees
+viewing direction (third row of R): [-0.000134  0.033682 -0.999433]
+skew K[0,1] = -1.6971 px, fy/fx = 1.0097
+################ step5_reprojection_error
+all points in front of the camera (w > 0): True
+average error: 0.427162 px
+median error:  0.292053 px
+maximum error: 4.456891 px
+RMS error:     0.640348 px
+90th / 99th percentile: 0.8908 / 1.8007 px
+points with error > 1 px: 21, > 2 px: 2
+five largest errors (point number, px):
+   39  4.4569   observed (556.045, 252.201)  projected (551.588, 252.159)
+  180  4.4429   observed (251.586, 494.888)  projected (255.934, 495.802)
+   14  1.9320   observed (527.842, 301.539)  projected (529.479, 300.514)
+   20  1.7967   observed (566.437, 126.101)  projected (568.230, 126.212)
+   78  1.5527   observed (297.908, 354.890)  projected (296.495, 354.247)
+average error without the two largest points: 0.399981 px
+################ step6_extra_checks
+normalize=True   average error 0.427162 px, median 0.292053 px, max 4.456891 px
+normalize=False  average error 0.427089 px, median 0.285902 px, max 4.454302 px
+5-fold hold-out: average 0.438037 px, median 0.293929 px, max 4.595125 px

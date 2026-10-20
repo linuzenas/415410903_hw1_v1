@@ -1,63 +1,69 @@
-
+"""
+Step 5: project the 3D points with P and measure the error (task 3).
+error_i = distance in pixels between the given point (u_i, v_i) and the
+projected point. Point numbers start at 1 and follow the order of the CSV.
+"""
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")                    
+import matplotlib.pyplot as plt
 
-# Step 1: Load the original point correspondences.
-data = pd.read_csv("cv_assignment_correspondences.csv")
+from camera_utils import RESULTS, load_points, load_matrix, reprojection_errors
 
-points_2d = data[["u", "v"]].to_numpy(dtype=float)
-points_3d = data[["X", "Y", "Z"]].to_numpy(dtype=float)
+pts2d, pts3d = load_points()
+P = load_matrix("projection_matrix.csv")
+err, projected, w = reprojection_errors(P, pts2d, pts3d)
 
-# Step 2: Load the projection matrix.
-P = np.loadtxt("projection_matrix.csv", delimiter=",")
+print("all points in front of the camera (w > 0):", bool(np.all(w > 0)))
+print("average error: %.6f px" % err.mean())
+print("median error:  %.6f px" % np.median(err))
+print("maximum error: %.6f px" % err.max())
+print("RMS error:     %.6f px" % np.sqrt(np.mean(err ** 2)))
+print("90th / 99th percentile: %.4f / %.4f px" % tuple(np.percentile(err, [90, 99])))
+print("points with error > 1 px: %d, > 2 px: %d" % ((err > 1).sum(), (err > 2).sum()))
 
-# Step 3: Convert 3D points into homogeneous coordinates.
-ones = np.ones((len(points_3d), 1))
-points_3d_h = np.hstack([points_3d, ones])
+order = np.argsort(-err)
+print("five largest errors (point number, px):")
+for i in order[:5]:
+    print("  %3d  %.4f   observed (%.3f, %.3f)  projected (%.3f, %.3f)"
+          % (i + 1, err[i], *pts2d[i], *projected[i]))
+rest = np.delete(err, order[:2])
+print("average error without the two largest points: %.6f px" % rest.mean())
 
-# Step 4: Project all 3D points into the image.
-projected_h = (P @ points_3d_h.T).T
-
-# Step 5: Divide by the third coordinate.
-denominator = projected_h[:, 2]
-
-if np.any(np.abs(denominator) < 1e-12):
-    raise ValueError("A projected point has a near-zero denominator.")
-
-predicted_2d = projected_h[:, :2] / denominator[:, None]
-
-# Step 6: Calculate the error for each point.
-differences = points_2d - predicted_2d
-errors = np.linalg.norm(differences, axis=1)
-
-# Step 7: Calculate average and other summary statistics.
-average_error = np.mean(errors)
-median_error = np.median(errors)
-maximum_error = np.max(errors)
-
-print("Number of points:", len(points_2d))
-print(f"Average reprojection error: {average_error:.6f} pixels")
-print(f"Median reprojection error:  {median_error:.6f} pixels")
-print(f"Maximum reprojection error: {maximum_error:.6f} pixels")
-
-# Step 8: Save actual and predicted coordinates.
-results = pd.DataFrame({
-    "u_actual": points_2d[:, 0],
-    "v_actual": points_2d[:, 1],
-    "u_predicted": predicted_2d[:, 0],
-    "v_predicted": predicted_2d[:, 1],
-    "error_pixels": errors
+table = pd.DataFrame({
+    "point": np.arange(1, len(err) + 1),
+    "u": pts2d[:, 0], "v": pts2d[:, 1],
+    "X": pts3d[:, 0], "Y": pts3d[:, 1], "Z": pts3d[:, 2],
+    "u_projected": projected[:, 0], "v_projected": projected[:, 1],
+    "error_px": err,
 })
+RESULTS.mkdir(exist_ok=True)
+table.to_csv(RESULTS / "reprojection_results.csv", index=False, float_format="%.10g")
 
-results.to_csv("reprojection_results.csv", index=False)
+# Figure 1: histogram of the errors
+fig, ax = plt.subplots(figsize=(6, 3.6))
+ax.hist(err, bins=30, color="#888888", edgecolor="black")
+ax.axvline(err.mean(), color="black", linestyle="--", label="mean %.3f" % err.mean())
+ax.axvline(np.median(err), color="black", linestyle=":", label="median %.3f" % np.median(err))
+ax.set_xlabel("reprojection error (pixels)")
+ax.set_ylabel("number of points")
+ax.legend()
+fig.tight_layout()
+fig.savefig(RESULTS / "fig_error_histogram.png", dpi=200)
+plt.close(fig)
 
-print("\nSaved point-by-point results to reprojection_results.csv")
-
-# Step 9: Find the point with the largest reprojection error.
-index = np.argmax(errors)
-
-print("\nPoint with the largest error:")
-print("Point number:", index + 1)
-print("Actual 2D point:", points_2d[index])
-print("Predicted 2D point:", predicted_2d[index])
-print("Error in pixels:", errors[index])
+# Figure 2: where in the image the errors are
+fig, ax = plt.subplots(figsize=(6, 4.2))
+sc = ax.scatter(pts2d[:, 0], pts2d[:, 1], c=err, s=14, cmap="viridis")
+fig.colorbar(sc, label="error (pixels)")
+for i in order[:2]:
+    ax.annotate("point %d" % (i + 1), pts2d[i], textcoords="offset points",
+                xytext=(6, 6), fontsize=8)
+ax.invert_yaxis()                        # image coordinates: v grows downwards
+ax.set_xlabel("u (pixels)")
+ax.set_ylabel("v (pixels)")
+ax.set_aspect("equal")
+fig.tight_layout()
+fig.savefig(RESULTS / "fig_error_map.png", dpi=200)
+plt.close(fig)
